@@ -7,7 +7,8 @@
 - [데모 apk 다운로드](#데모-apk-다운로드)
 - [적용하기](#적용하기)
     - [gradle 설정](#gradle-설정)
-    - [글, 댓글, 대댓글 UI RecyclerView 만들기](#글-댓글-대댓글-ui-recyclerview-만들기)
+    - [글, 댓글, 대댓글의 Item과 ViewHolder 만들기](#글-댓글-대댓글의-item과-viewholder-만들기)
+    - [UniversalAdapter 설정](#universaladapter-설정)
 
 <!-- /TOC -->
 
@@ -28,6 +29,7 @@
     - RecyclerView 의 header, footer 를 처리하는게 좀더 쉬워짐
 - `IUniversalListener.onClickItem` 으로 아이템클릭을 처리하도록 함.
 - LoadMore를 쉽게 구현하도록 `IUniversalListener.onLastItem`, `UniversalAdapter.setLoadMoreVhType` 를 지원하여, LoadMoreVh 를 만들어서 타입지정하고, 데이타 로딩하는 구현을 명확히 붙일수 있도록 해 두었음.
+- `UniversalAdapter.setAdditionalCallback` 으로 추가적인 이벤트 컨트롤을 할 수 있도록 함.
 
 # 데모 영상
 - ![](https://github.com/HyundongHwang/UniversalAdapter/raw/master/demo.gif)
@@ -41,4 +43,160 @@
 
 # 적용하기
 ## gradle 설정
-## 글, 댓글, 대댓글 UI RecyclerView 만들기
+
+- /buid.gradle
+
+```groovy
+buildscript {
+    repositories {
+        maven { url 'https://jitpack.io' }
+    }
+}
+
+allprojects {
+    repositories {
+        maven { url 'https://jitpack.io' }
+    }
+}
+```
+
+- /app/buid.gradle
+
+```groovy
+dependencies {
+    implementation 'com.github.HyundongHwang:universaladapter:0.9.0'
+}
+```
+
+## 글, 댓글, 대댓글의 Item과 ViewHolder 만들기
+
+- ArticleItem
+
+```java
+public class ArticleItem {
+    public String text;
+}
+```
+
+- ArticleVh
+
+```java
+public class ArticleVh extends UniversalViewHolder {
+    @BindView(R.id.tv_text)
+    TextView _TvText;
+    private ArticleCommentActivity.ICallback _parentCallback;
+
+    public ArticleVh(View itemView) {
+        super(itemView);
+    }
+
+    @Override
+    public View inflateConvertView(ViewGroup parent) {
+        LayoutInflater inflater = LayoutInflater.from(parent.getContext());
+        View convertView = inflater.inflate(R.layout.item_article, parent, false);
+        return convertView;
+    }
+
+    @Override
+    public void findAllViews(Object parentCallback) {
+        ButterKnife.bind(this, this.itemView);
+        _parentCallback = (ArticleCommentActivity.ICallback) parentCallback;
+    }
+
+    @Override
+    public void onBindViewHolder() {
+        ArticleItem thisItem = (ArticleItem) this.item;
+        _TvText.setText(thisItem.text);
+    }
+
+    @OnClick(R.id.btn_show_comments)
+    public void onViewClicked() {
+        _parentCallback.onClickShowComment();
+    }
+}
+```
+
+- CommentItem
+- CommentVh
+- CommentOfCommentItem
+- CommentOfCommentVh
+
+## UniversalAdapter 설정
+
+- ArticleCommentActivity
+
+```java
+public class ArticleCommentActivity extends AppCompatActivity {
+
+    @BindView(R.id.rv_obj)
+    RecyclerView _RvObj;
+
+    private UniversalAdapter _adapter;
+    private ArticleCommentDAO _dao = new ArticleCommentDAO();
+
+    @Override
+    protected void onCreate(@Nullable Bundle savedInstanceState) {
+        super.onCreate(savedInstanceState);
+        this.setContentView(R.layout.activity_article_comment);
+        ButterKnife.bind(this);
+
+        LinearLayoutManager lm = new LinearLayoutManager(this, LinearLayoutManager.VERTICAL, false);
+        _RvObj.setLayoutManager(lm);
+
+        ArrayList<Class> itemTypeList = new ArrayList<>();
+        itemTypeList.add(ArticleItem.class);
+        itemTypeList.add(CommentItem.class);
+        itemTypeList.add(CommentOfCommentItem.class);
+
+        ArrayList<Class<? extends UniversalViewHolder>> vhTypeList = new ArrayList<>();
+        vhTypeList.add(ArticleVh.class);
+        vhTypeList.add(CommentVh.class);
+        vhTypeList.add(CommentOfCommentVh.class);
+
+        _adapter = new UniversalAdapter(
+                _RvObj,
+                itemTypeList,
+                vhTypeList
+        );
+
+        _adapter.setListener(new IUniversalListener() {
+            @Override
+            public void onClickItem(Object item, int position, View convertView) {
+                String json = MyUtils.createGson().toJson(item);
+                Toast.makeText(getBaseContext(), json, Toast.LENGTH_SHORT).show();
+            }
+
+            @SuppressLint("StaticFieldLeak")
+            @Override
+            public void onLastItem() {
+            }
+        });
+
+        _adapter.setAdditionalCallback(new ICallback() {
+            @Override
+            public void onClickShowComment() {
+                _loadComments();
+                _adapter.notifyDataSetChanged();
+            }
+        });
+
+        _adapter.getItems().add(_dao.get(0));
+        _RvObj.setAdapter(_adapter);
+    }
+
+    private void _loadComments() {
+        if (_adapter.getItems().size() == _dao.size())
+            return;
+
+
+        for (int i = 1; i < _dao.size(); i++) {
+            Object item = _dao.get(i);
+            _adapter.getItems().add(item);
+        }
+    }
+
+    public interface ICallback {
+        void onClickShowComment();
+    }
+}
+```
