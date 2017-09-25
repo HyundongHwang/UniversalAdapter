@@ -30,6 +30,9 @@
 - LoadMore를 쉽게 구현하도록 `IUniversalListener.onLastItem`, `UniversalAdapter.setLoadMoreVhType` 를 지원하여, LoadMoreVh 를 만들어서 타입지정하고, 데이타 로딩하는 구현을 명확히 붙일수 있도록 해 두었음.
 
 # 데모 영상
+<img src='https://im.ezgif.com/tmp/ezgif-1-6df05e322b.gif' width=100px>
+<img src='https://im.ezgif.com/tmp/ezgif-1-6df05e322b.gif' width=200px>
+<img src='https://im.ezgif.com/tmp/ezgif-1-6df05e322b.gif' width=300px>
 - ![](https://im.ezgif.com/tmp/ezgif-1-6df05e322b.gif)
 
 # 데모 apk 다운로드
